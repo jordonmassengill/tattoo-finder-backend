@@ -1,0 +1,136 @@
+const Post = require('../models/Post');
+const { User } = require('../models/User');
+
+// Create post
+exports.createPost = async (req, res) => {
+  try {
+    const { caption, tags } = req.body;
+    
+    // Check if image file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file uploaded' });
+    }
+    
+    // Create new post
+    const newPost = new Post({
+      user: req.user.id,
+      image: req.file.path,
+      caption,
+      tags: tags ? tags.split(',').map(tag => tag.trim()) : []
+    });
+    
+    const post = await newPost.save();
+    
+    // Populate user info before returning
+    const populatedPost = await Post.findById(post._id).populate('user', 'name userType profilePic username');
+    
+    res.status(201).json(populatedPost);
+  } catch (error) {
+    console.error('Error creating post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get all posts (feed)
+exports.getPosts = async (req, res) => {
+  try {
+    const posts = await Post.find()
+      .sort({ createdAt: -1 })
+      .populate('user', 'name userType profilePic username');
+      
+    res.json(posts);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Get post by ID
+exports.getPostById = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id)
+      .populate('user', 'name userType profilePic username')
+      .populate('comments.user', 'name profilePic');
+      
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    
+    res.json(post);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Like post
+exports.likePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    
+    // Check if already liked
+    if (post.likes.includes(req.user.id)) {
+      return res.status(400).json({ message: 'Post already liked' });
+    }
+    
+    post.likes.push(req.user.id);
+    await post.save();
+    
+    res.json(post.likes);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Unlike post
+exports.unlikePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    
+    // Check if not liked
+    if (!post.likes.includes(req.user.id)) {
+      return res.status(400).json({ message: 'Post not yet liked' });
+    }
+    
+    post.likes = post.likes.filter(like => like.toString() !== req.user.id);
+    await post.save();
+    
+    res.json(post.likes);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Add comment
+exports.addComment = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    
+    const newComment = {
+      user: req.user.id,
+      text: req.body.text
+    };
+    
+    post.comments.unshift(newComment);
+    await post.save();
+    
+    res.json(post.comments);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
