@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const auth = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
 // Get current user
 router.get('/me', auth, userController.getCurrentUser);
@@ -23,5 +24,8 @@ router.put('/update', auth, userController.updateProfile);
 
 // Delete user account
 router.delete('/:id', auth, userController.deleteUser);
+
+//Profile Pic
+router.put('/profile-picture', auth, upload.single('profilePic'), userController.updateProfilePicture);
 
 module.exports = router;

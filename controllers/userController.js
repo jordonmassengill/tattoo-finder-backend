@@ -188,6 +188,11 @@ exports.updateProfile = async (req, res) => {
       user.styles = styles;
     }
     
+    // Handle profile picture if uploaded
+    if (req.file) {
+      user.profilePic = req.file.path;
+    }
+    
     await user.save();
     
     // Return updated user without password
@@ -196,6 +201,36 @@ exports.updateProfile = async (req, res) => {
     res.json(updatedUser);
   } catch (error) {
     console.error('Error updating profile:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Add a new route handler specifically for profile picture updates
+exports.updateProfilePicture = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file uploaded' });
+    }
+    
+    // Find and update the user
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    user.profilePic = req.file.path;
+    await user.save();
+    
+    res.json({ 
+      message: 'Profile picture updated successfully',
+      profilePic: user.profilePic
+    });
+  } catch (error) {
+    console.error('Error updating profile picture:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
