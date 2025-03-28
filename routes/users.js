@@ -18,4 +18,10 @@ router.put('/follow/:id', auth, userController.followUser);
 // Unfollow user
 router.put('/unfollow/:id', auth, userController.unfollowUser);
 
+// Update user profile
+router.put('/update', auth, userController.updateProfile);
+
+// Delete user account
+router.delete('/:id', auth, userController.deleteUser);
+
 module.exports = router;

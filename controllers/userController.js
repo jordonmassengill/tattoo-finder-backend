@@ -1,5 +1,6 @@
 const { User, Artist, Shop } = require('../models/User');
 const Post = require('../models/Post');
+const mongoose = require('mongoose');
 
 // Get current user
 exports.getCurrentUser = async (req, res) => {
@@ -18,12 +19,27 @@ exports.getCurrentUser = async (req, res) => {
 // Get user by ID or username
 exports.getUserById = async (req, res) => {
   try {
-    const user = await User.findOne({
-      $or: [
-        { _id: req.params.id },
-        { username: req.params.id }
-      ]
-    }).select('-password');
+    console.log('getUserById called with parameter:', req.params.id);
+    
+    // Try to find by MongoDB ID first
+    let user = null;
+    
+    // Check if the parameter is a valid MongoDB ObjectId
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(req.params.id);
+    
+    if (isValidObjectId) {
+      // Try to find by ID
+      user = await User.findById(req.params.id).select('-password');
+    }
+    
+    // If not found by ID, try to find by username (case-insensitive)
+    if (!user) {
+      user = await User.findOne({
+        username: { $regex: new RegExp('^' + req.params.id + '$', 'i') }
+      }).select('-password');
+    }
+    
+    console.log('User search result:', user ? `User found: ${user.username}` : 'User not found');
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -31,7 +47,7 @@ exports.getUserById = async (req, res) => {
     
     res.json(user);
   } catch (error) {
-    console.error(error);
+    console.error('Error in getUserById:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -39,13 +55,42 @@ exports.getUserById = async (req, res) => {
 // Get user posts
 exports.getUserPosts = async (req, res) => {
   try {
-    const posts = await Post.find({ user: req.params.id })
+    console.log('getUserPosts called with parameter:', req.params.id);
+    
+    // First, find the user by ID or username
+    let user;
+    
+    // Check if the parameter is a valid MongoDB ObjectId
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(req.params.id);
+    
+    if (isValidObjectId) {
+      // Try to find by ID
+      user = await User.findById(req.params.id);
+    }
+    
+    // If not found by ID, try to find by username (case-insensitive)
+    if (!user) {
+      user = await User.findOne({
+        username: { $regex: new RegExp('^' + req.params.id + '$', 'i') }
+      });
+    }
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    console.log(`Found user: ${user.username}, ID: ${user._id}`);
+    
+    // Then get posts for that user
+    const posts = await Post.find({ user: user._id })
       .sort({ createdAt: -1 })
       .populate('user', 'name userType profilePic username');
+    
+    console.log(`Found ${posts.length} posts for user ${user.username}`);
       
     res.json(posts);
   } catch (error) {
-    console.error(error);
+    console.error('Error in getUserPosts:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -117,6 +162,106 @@ exports.unfollowUser = async (req, res) => {
     res.json({ message: 'Successfully unfollowed user' });
   } catch (error) {
     console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Update user profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { bio, location, styles } = req.body;
+    const userId = req.user.id;
+    
+    // Find the user
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Update only the fields that are provided
+    if (bio !== undefined) user.bio = bio;
+    if (location !== undefined) user.location = location;
+    
+    // Only update styles if user is an artist and styles are provided
+    if (user.userType === 'artist' && styles !== undefined) {
+      user.styles = styles;
+    }
+    
+    await user.save();
+    
+    // Return updated user without password
+    const updatedUser = await User.findById(userId).select('-password');
+    
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Delete user account
+exports.deleteUser = async (req, res) => {
+  try {
+    // Make sure user can only delete their own account
+    if (req.user.id !== req.params.id) {
+      return res.status(401).json({ message: 'Not authorized to delete this account' });
+    }
+
+    // Find and remove the user
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // If user is an artist and belongs to a shop, remove from shop's artists list
+    if (user.userType === 'artist' && user.shop) {
+      await User.findByIdAndUpdate(user.shop, {
+        $pull: { artists: user._id }
+      });
+    }
+    
+    // If user is a shop, handle its artists (maybe set their shop field to null)
+    if (user.userType === 'shop' && user.artists && user.artists.length > 0) {
+      // Update all artists to remove shop association
+      await User.updateMany(
+        { _id: { $in: user.artists } },
+        { $unset: { shop: "" } }
+      );
+    }
+    
+    // Delete all posts by this user
+    await Post.deleteMany({ user: user._id });
+    
+    // Remove user's likes and comments from other posts
+    await Post.updateMany(
+      { likes: user._id },
+      { $pull: { likes: user._id } }
+    );
+    
+    await Post.updateMany(
+      { 'comments.user': user._id },
+      { $pull: { comments: { user: user._id } } }
+    );
+    
+    // Remove user from followers and following lists
+    await User.updateMany(
+      { followers: user._id },
+      { $pull: { followers: user._id } }
+    );
+    
+    await User.updateMany(
+      { following: user._id },
+      { $pull: { following: user._id } }
+    );
+    
+    // Finally delete the user
+    await User.findByIdAndDelete(user._id);
+    
+    res.json({ message: 'Account successfully deleted' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

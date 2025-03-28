@@ -77,3 +77,57 @@ exports.register = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// Login user
+exports.login = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    // Validate input
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Please provide username and password' });
+    }
+    
+    // Find user by username
+    const user = await User.findOne({ username });
+    
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    // Check password
+    const isMatch = await user.comparePassword(password);
+    
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    // Create and return JWT token
+    const token = jwt.sign(
+      { id: user._id, userType: user.userType }, 
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+    
+    // Return user data and token
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        userType: user.userType,
+        profilePic: user.profilePic,
+        // Include type-specific fields based on userType
+        ...(user.userType !== 'enthusiast' && { 
+          bio: user.bio,
+          location: user.location
+        }),
+        ...(user.userType === 'artist' && { styles: user.styles })
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
