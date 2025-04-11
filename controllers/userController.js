@@ -169,7 +169,7 @@ exports.unfollowUser = async (req, res) => {
 // Update user profile
 exports.updateProfile = async (req, res) => {
   try {
-    const { bio, location, styles } = req.body;
+    const { bio, location, styles, priceRange } = req.body;
     const userId = req.user.id;
     
     // Find the user
@@ -182,6 +182,14 @@ exports.updateProfile = async (req, res) => {
     // Update only the fields that are provided
     if (bio !== undefined) user.bio = bio;
     if (location !== undefined) user.location = location;
+    
+    // Only update priceRange if user is an artist and priceRange is provided
+    if (user.userType === 'artist' && priceRange !== undefined) {
+      // Validate that priceRange is one of the allowed values
+      if (priceRange === '' || ['$', '$$', '$$$', '$$$$'].includes(priceRange)) {
+        user.priceRange = priceRange;
+      }
+    }
     
     // Only update styles if user is an artist and styles are provided
     if (user.userType === 'artist' && styles !== undefined) {

@@ -4,22 +4,50 @@ const { User } = require('../models/User');
 // Create post
 exports.createPost = async (req, res) => {
   try {
-    const { caption, tags } = req.body;
+    console.log('Create post request body:', req.body);
+    console.log('Create post request file:', req.file ? req.file.path : 'No file');
+    
+    const { caption, tags, styles } = req.body;
     
     // Check if image file was uploaded
     if (!req.file) {
       return res.status(400).json({ message: 'No image file uploaded' });
     }
     
+    // Process and normalize the input data
+    const processedTags = tags ? tags.split(',').map(tag => tag.trim().toLowerCase()) : [];
+    const processedStyles = styles ? styles.split(',').map(style => style.trim()) : [];
+    
+    console.log('Processing post with:', {
+      userId: req.user.id,
+      caption,
+      processedTags,
+      processedStyles
+    });
+    
     // Create new post
     const newPost = new Post({
       user: req.user.id,
       image: req.file.path,
       caption,
-      tags: tags ? tags.split(',').map(tag => tag.trim()) : []
+      tags: processedTags,
+      styles: processedStyles
+    });
+    
+    console.log('New post object:', {
+      user: newPost.user,
+      image: newPost.image,
+      caption: newPost.caption,
+      tags: newPost.tags,
+      styles: newPost.styles
     });
     
     const post = await newPost.save();
+    console.log('Post saved with ID:', post._id);
+    
+    // Verify the saved post has styles
+    const savedPost = await Post.findById(post._id);
+    console.log('Saved post styles:', savedPost.styles);
     
     // Populate user info before returning
     const populatedPost = await Post.findById(post._id).populate('user', 'name userType profilePic username');

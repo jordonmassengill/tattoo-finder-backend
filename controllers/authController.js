@@ -31,10 +31,17 @@ exports.register = async (req, res) => {
         email, password, userType, username 
       });
     } else if (userType === 'artist') {
+      // Validate priceRange if provided
+      const priceRange = extraFields.priceRange;
+      if (priceRange && !['$', '$$', '$$$', '$$$$'].includes(priceRange)) {
+        return res.status(400).json({ message: 'Invalid price range' });
+      }
+      
       user = new Artist({ 
         email, password, userType, username,
         bio: extraFields.bio,
         location: extraFields.location,
+        priceRange: extraFields.priceRange || '',
         styles: extraFields.styles || []
       });
     } else if (userType === 'shop') {
@@ -69,7 +76,10 @@ exports.register = async (req, res) => {
           bio: user.bio,
           location: user.location
         }),
-        ...(userType === 'artist' && { styles: user.styles })
+        ...(userType === 'artist' && { 
+          styles: user.styles,
+          priceRange: user.priceRange
+        })
       }
     });
   } catch (error) {

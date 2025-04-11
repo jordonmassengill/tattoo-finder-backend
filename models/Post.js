@@ -15,6 +15,7 @@ const postSchema = new mongoose.Schema({
     default: ''
   },
   tags: [String],
+  styles: [String], // New field for tattoo styles
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

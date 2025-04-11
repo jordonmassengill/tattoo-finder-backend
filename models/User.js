@@ -57,7 +57,11 @@ const artistSchema = new mongoose.Schema({
   },
   bio: String,
   location: String,
-  priceRange: String,
+  priceRange: {
+    type: String,
+    enum: ['$', '$$', '$$$', '$$$$'], // Restrict to these 4 values
+    default: ''
+  },
   styles: [String],
   shop: {
     type: mongoose.Schema.Types.ObjectId,

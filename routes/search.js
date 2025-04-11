@@ -9,4 +9,6 @@ router.get('/artists', searchController.searchArtists);
 // Get featured posts
 router.get('/featured', searchController.getFeaturedPosts);
 
+router.get('/posts-by-style', searchController.searchPostsByStyle);
+
 module.exports = router;
