@@ -1,31 +1,20 @@
+// File: controllers/postController.js
+
 const Post = require('../models/Post');
 const { User } = require('../models/User');
 
 // Create post
 exports.createPost = async (req, res) => {
   try {
-    console.log('Create post request body:', req.body);
-    console.log('Create post request file:', req.file ? req.file.path : 'No file');
-    
     const { caption, tags, styles } = req.body;
     
-    // Check if image file was uploaded
     if (!req.file) {
       return res.status(400).json({ message: 'No image file uploaded' });
     }
     
-    // Process and normalize the input data
     const processedTags = tags ? tags.split(',').map(tag => tag.trim().toLowerCase()) : [];
     const processedStyles = styles ? styles.split(',').map(style => style.trim()) : [];
     
-    console.log('Processing post with:', {
-      userId: req.user.id,
-      caption,
-      processedTags,
-      processedStyles
-    });
-    
-    // Create new post
     const newPost = new Post({
       user: req.user.id,
       image: req.file.path,
@@ -34,22 +23,7 @@ exports.createPost = async (req, res) => {
       styles: processedStyles
     });
     
-    console.log('New post object:', {
-      user: newPost.user,
-      image: newPost.image,
-      caption: newPost.caption,
-      tags: newPost.tags,
-      styles: newPost.styles
-    });
-    
     const post = await newPost.save();
-    console.log('Post saved with ID:', post._id);
-    
-    // Verify the saved post has styles
-    const savedPost = await Post.findById(post._id);
-    console.log('Saved post styles:', savedPost.styles);
-    
-    // Populate user info before returning
     const populatedPost = await Post.findById(post._id).populate('user', 'name userType profilePic username');
     
     res.status(201).json(populatedPost);
@@ -62,18 +36,14 @@ exports.createPost = async (req, res) => {
 // Get all posts (feed)
 exports.getPosts = async (req, res) => {
   try {
-    // Find the current user to get their 'following' list
     const currentUser = await User.findById(req.user.id);
 
     if (!currentUser) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Create a list of users whose posts should be in the feed
-    // This includes the people the user is following, plus the user themselves
     const usersForFeed = [...currentUser.following, req.user.id];
 
-    // Find all posts where the 'user' field is in our list of users
     const posts = await Post.find({ user: { $in: usersForFeed } })
       .sort({ createdAt: -1 })
       .populate('user', 'name userType profilePic username');
@@ -90,11 +60,14 @@ exports.getPostById = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id)
       .populate('user', 'name userType profilePic username')
-      .populate('comments.user', 'name profilePic');
-      
+      .populate('comments.user', 'username profilePic _id'); 
+    
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
+    
+    // Sort comments by the number of likes in descending order
+    post.comments.sort((a, b) => b.likes.length - a.likes.length);
     
     res.json(post);
   } catch (error) {
@@ -112,7 +85,6 @@ exports.likePost = async (req, res) => {
       return res.status(404).json({ message: 'Post not found' });
     }
     
-    // Check if already liked
     if (post.likes.includes(req.user.id)) {
       return res.status(400).json({ message: 'Post already liked' });
     }
@@ -136,7 +108,6 @@ exports.unlikePost = async (req, res) => {
       return res.status(404).json({ message: 'Post not found' });
     }
     
-    // Check if not liked
     if (!post.likes.includes(req.user.id)) {
       return res.status(400).json({ message: 'Post not yet liked' });
     }
@@ -168,7 +139,9 @@ exports.addComment = async (req, res) => {
     post.comments.unshift(newComment);
     await post.save();
     
-    res.json(post.comments);
+    const populatedPost = await Post.findById(post._id).populate('comments.user', 'username profilePic _id');
+
+    res.json(populatedPost.comments);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
@@ -184,17 +157,90 @@ exports.deletePost = async (req, res) => {
       return res.status(404).json({ message: 'Post not found' });
     }
     
-    // Check if user owns the post
     if (post.user.toString() !== req.user.id) {
       return res.status(401).json({ message: 'Not authorized to delete this post' });
     }
     
-    // Delete the post
     await Post.findByIdAndDelete(req.params.id);
     
     res.json({ message: 'Post deleted successfully' });
   } catch (error) {
     console.error('Error deleting post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Delete a comment
+exports.deleteComment = async (req, res) => {
+  try {
+    const { postId, commentId } = req.params;
+
+    const post = await Post.findOne({ _id: postId, 'comments._id': commentId });
+
+    if (!post) {
+      return res.status(404).json({ message: 'Comment or Post not found' });
+    }
+
+    const comment = post.comments.find(c => c._id.toString() === commentId);
+
+    if (comment.user.toString() !== req.user.id) {
+      return res.status(401).json({ message: 'Not authorized to delete this comment' });
+    }
+
+    const updatedPost = await Post.findByIdAndUpdate(postId, 
+        { $pull: { comments: { _id: commentId } } },
+        { new: true }
+    ).populate('comments.user', 'username profilePic _id');
+
+    res.json({ message: 'Comment deleted successfully', comments: updatedPost.comments });
+
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Like a comment
+exports.likeComment = async (req, res) => {
+  try {
+    const { postId, commentId } = req.params;
+    const post = await Post.findById(postId);
+    const comment = post.comments.id(commentId);
+
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    if (comment.likes.includes(req.user.id)) {
+        return res.status(400).json({ message: 'Comment already liked' });
+    }
+    comment.likes.push(req.user.id);
+    await post.save();
+
+    res.json(comment.likes);
+  } catch (error) {
+    console.error('Error liking comment:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Unlike a comment
+exports.unlikeComment = async (req, res) => {
+  try {
+    const { postId, commentId } = req.params;
+    const post = await Post.findById(postId);
+    const comment = post.comments.id(commentId);
+
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found' });
+    }
+
+    comment.likes = comment.likes.filter(like => like.toString() !== req.user.id);
+    await post.save();
+    
+    res.json(comment.likes);
+  } catch (error) {
+    console.error('Error unliking comment:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

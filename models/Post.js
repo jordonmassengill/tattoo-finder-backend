@@ -1,3 +1,5 @@
+// File: models/Post.js (with modifications)
+
 const mongoose = require('mongoose');
 
 const postSchema = new mongoose.Schema({
@@ -15,7 +17,7 @@ const postSchema = new mongoose.Schema({
     default: ''
   },
   tags: [String],
-  styles: [String], // New field for tattoo styles
+  styles: [String],
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -29,7 +31,12 @@ const postSchema = new mongoose.Schema({
     date: {
       type: Date,
       default: Date.now
-    }
+    },
+    // ADDITION: Add a 'likes' array to each comment
+    likes: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }]
   }],
   createdAt: {
     type: Date,
