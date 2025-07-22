@@ -7,8 +7,8 @@ const upload = require('../middleware/upload');
 // Create post
 router.post('/', auth, upload.single('image'), postController.createPost);
 
-// Get all posts
-router.get('/', postController.getPosts);
+// Get all posts for the user's feed
+router.get('/', auth, postController.getPosts); // MODIFIED: Added auth middleware
 
 // Get post by ID
 router.get('/:id', postController.getPostById);

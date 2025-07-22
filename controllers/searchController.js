@@ -113,43 +113,43 @@ exports.searchPostsByStyle = async (req, res) => {
 
 // Get featured posts for search page
 exports.getFeaturedPosts = async (req, res) => {
-  try {
-    const { location, priceRange, styles } = req.query;
-    let filterCriteria = {};
-    let userCriteria = { userType: 'artist' };
+  try {
+    const { location, priceRange, styles } = req.query;
+    let filterCriteria = {};
+    let userCriteria = { userType: 'artist' };
 
-    if (location && location.length > 0) {
-      userCriteria.location = { $in: Array.isArray(location) ? location : [location] };
-    }
+    if (location && location.length > 0) {
+      userCriteria.location = { $in: Array.isArray(location) ? location : [location] };
+    }
 
-    if (priceRange && priceRange.length > 0) {
-      userCriteria.priceRange = { $in: Array.isArray(priceRange) ? priceRange : [priceRange] };
-    }
+    if (priceRange && priceRange.length > 0) {
+      userCriteria.priceRange = { $in: Array.isArray(priceRange) ? priceRange : [priceRange] };
+    }
 
-    if (styles && styles.length > 0) {
-      const styleArray = styles.split(',').map(style => style.trim());
-      userCriteria.styles = { $in: styleArray };
-    }
+    if (styles && styles.length > 0) {
+      const styleArray = styles.split(',').map(style => style.trim());
+      userCriteria.styles = { $in: styleArray };
+    }
 
-    const artists = await User.find(userCriteria).select('_id');
-    const artistIds = artists.map(artist => artist._id);
+    const artists = await User.find(userCriteria).select('_id');
+    const artistIds = artists.map(artist => artist._id);
 
-    if (Object.keys(userCriteria).length > 1 && artistIds.length === 0) {
-        return res.json([]);
-    }
+    if (Object.keys(userCriteria).length > 1 && artistIds.length === 0) {
+        return res.json([]);
+    }
 
-    if (artistIds.length > 0) {
-        filterCriteria.user = { $in: artistIds };
-    }
-    
-    const posts = await Post.find(filterCriteria)
-      .sort({ 'likes': -1 })
-      .limit(20)
-      .populate('user', 'name userType profilePic username location priceRange styles');
+    if (artistIds.length > 0) {
+        filterCriteria.user = { $in: artistIds };
+    }
+    
+    const posts = await Post.find(filterCriteria)
+      .sort({ 'createdAt': -1 }) // MODIFIED: Changed from 'likes' to 'createdAt'
+      .limit(20)
+      .populate('user', 'name userType profilePic username location priceRange styles');
 
-    res.json(posts);
-  } catch (error) {
-    console.error('Error fetching featured posts:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
+    res.json(posts);
+  } catch (error) {
+    console.error('Error fetching featured posts:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };

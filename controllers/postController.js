@@ -62,7 +62,19 @@ exports.createPost = async (req, res) => {
 // Get all posts (feed)
 exports.getPosts = async (req, res) => {
   try {
-    const posts = await Post.find()
+    // Find the current user to get their 'following' list
+    const currentUser = await User.findById(req.user.id);
+
+    if (!currentUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Create a list of users whose posts should be in the feed
+    // This includes the people the user is following, plus the user themselves
+    const usersForFeed = [...currentUser.following, req.user.id];
+
+    // Find all posts where the 'user' field is in our list of users
+    const posts = await Post.find({ user: { $in: usersForFeed } })
       .sort({ createdAt: -1 })
       .populate('user', 'name userType profilePic username');
       

@@ -9,7 +9,20 @@ exports.getCurrentUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    res.json(user);
+    // MODIFIED: Return a structured object consistent with the login response
+    res.json({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      userType: user.userType,
+      profilePic: user.profilePic,
+      followers: user.followers,
+      following: user.following,
+      bio: user.bio,
+      location: user.location,
+      styles: user.styles,
+      priceRange: user.priceRange
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error' });
