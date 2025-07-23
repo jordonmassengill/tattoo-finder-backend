@@ -5,7 +5,6 @@ const mongoose = require('mongoose');
 // Search for artists by criteria
 exports.searchArtists = async (req, res) => {
   try {
-    // The 'sort' parameter is now read from the query
     const { location, priceRange, styles, query, sort } = req.query;
     const searchCriteria = { userType: 'artist' };
 
@@ -28,26 +27,20 @@ exports.searchArtists = async (req, res) => {
       searchCriteria.styles = { $in: styleRegexes };
     }
 
-    // --- NEW SORTING LOGIC ---
-    // Refactored to use an aggregation pipeline for powerful sorting.
     const aggregation = [
       { $match: searchCriteria },
-      // Create a temporary field 'followersCount' to sort by.
       { $addFields: { followersCount: { $size: "$followers" } } },
     ];
 
-    // Apply the correct sort stage based on the query parameter.
     if (sort === 'newest') {
       aggregation.push({ $sort: { createdAt: -1 } });
-    } else { 
-      // Default sort for artists is by most followers.
+    } else {
       aggregation.push({ $sort: { followersCount: -1, createdAt: -1 } });
     }
 
-    // Add final stages for limiting and cleaning up the output.
     aggregation.push(
       { $limit: 30 },
-      { $project: { password: 0, __v: 0 } } // Exclude sensitive data
+      { $project: { password: 0, __v: 0 } }
     );
 
     const artists = await User.aggregate(aggregation);
@@ -62,13 +55,14 @@ exports.searchArtists = async (req, res) => {
 // This function is now the primary search endpoint for posts.
 exports.searchPosts = async (req, res) => {
   try {
-    const { styles, location, priceRange, sort } = req.query;
-    let artistFilter = { userType: 'artist' };
-    let postFilter = {};
+    const { styles, location, priceRange, sort, query } = req.query;
+    const finalFilter = {};
+    const postConditions = [];
 
-    // If location or price filters exist, find the artists who match first.
+    // --- 1. Handle Artist-based Filters (Location, Price Range) ---
     const hasArtistFilters = (location && location.length > 0) || (priceRange && priceRange.length > 0);
     if (hasArtistFilters) {
+      const artistFilter = { userType: 'artist' };
       if (location && location.length > 0) {
         artistFilter.location = { $in: Array.isArray(location) ? location : [location] };
       }
@@ -76,48 +70,68 @@ exports.searchPosts = async (req, res) => {
         artistFilter.priceRange = { $in: Array.isArray(priceRange) ? priceRange : [priceRange] };
       }
       const artists = await User.find(artistFilter).select('_id');
-      const artistIds = artists.map(artist => artist._id);
+      const artistIdsFromFilters = artists.map(artist => artist._id);
 
-      if (artistIds.length === 0) {
-        return res.json([]); // No artists match, so no posts will match.
+      if (artistIdsFromFilters.length === 0) {
+        return res.json([]); // No artists match these filters, so no posts will match.
       }
-      postFilter.user = { $in: artistIds };
+      postConditions.push({ user: { $in: artistIdsFromFilters } });
     }
 
-    // Add style filter for posts.
+    // --- 2. Handle Post-based Filters (Styles) ---
     if (styles && styles.length > 0) {
       const styleArray = styles.split(',').map(style => style.trim());
-      postFilter.styles = { $in: styleArray };
+      postConditions.push({ styles: { $in: styleArray } });
     }
 
-    // --- NEW SORTING LOGIC ---
-    // Using an aggregation pipeline to sort posts by likes.
+    // --- 3. Handle Text Query (Caption, Tags, AND Username) ---
+    if (query) {
+      const searchRegex = new RegExp(query, 'i');
+      // This $or condition checks the post's text fields
+      const textQueryOrConditions = [
+        { caption: { $regex: searchRegex } },
+        { tags: { $regex: searchRegex } }
+      ];
+
+      // It ALSO finds artists by username
+      const artistsFromUsername = await User.find({ username: searchRegex, userType: 'artist' }).select('_id');
+      if (artistsFromUsername.length > 0) {
+        const artistIdsFromUsername = artistsFromUsername.map(a => a._id);
+        // ...and adds their posts to the search results.
+        textQueryOrConditions.push({ user: { $in: artistIdsFromUsername } });
+      }
+      
+      postConditions.push({ $or: textQueryOrConditions });
+    }
+
+    // --- 4. Combine all conditions ---
+    if (postConditions.length > 0) {
+      finalFilter.$and = postConditions;
+    }
+
+    // --- 5. Build and Execute Aggregation Pipeline ---
     const aggregation = [
-      { $match: postFilter },
-      // Create a temporary field 'likeCount' to sort by.
+      { $match: finalFilter },
       { $addFields: { likeCount: { $size: "$likes" } } }
     ];
-    
+
     if (sort === 'likes') {
-      // Sort by likes, with newest as a tie-breaker.
       aggregation.push({ $sort: { likeCount: -1, createdAt: -1 } });
     } else {
-      // Default sort for posts is newest.
       aggregation.push({ $sort: { createdAt: -1 } });
     }
 
-    // Add final stages for limiting and populating user data.
     aggregation.push(
       { $limit: 50 },
       {
-        $lookup: { // This replaces .populate() in an aggregation.
+        $lookup: {
           from: "users",
           localField: "user",
           foreignField: "_id",
           as: "user"
         }
       },
-      { $unwind: "$user" } // Converts the 'user' array into an object.
+      { $unwind: "$user" }
     );
 
     const posts = await Post.aggregate(aggregation);
@@ -128,8 +142,3 @@ exports.searchPosts = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
-
-// Keep the old function names but point them to the new, unified search function
-// This ensures the frontend doesn't break if it's still calling the old endpoints.
-exports.getFeaturedPosts = exports.searchPosts;
-exports.searchPostsByStyle = exports.searchPosts;
