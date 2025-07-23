@@ -1,5 +1,3 @@
-// File: models/Post.js (with modifications)
-
 const mongoose = require('mongoose');
 
 const postSchema = new mongoose.Schema({
@@ -32,8 +30,11 @@ const postSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     },
-    // ADDITION: Add a 'likes' array to each comment
     likes: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }],
+    dislikes: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     }]

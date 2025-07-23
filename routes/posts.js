@@ -1,5 +1,3 @@
-// File: routes/posts.js (Complete and Correct)
-
 const express = require('express');
 const router = express.Router();
 const postController = require('../controllers/postController');
@@ -36,5 +34,10 @@ router.put('/comment/like/:postId/:commentId', auth, postController.likeComment)
 // Unlike a comment
 router.put('/comment/unlike/:postId/:commentId', auth, postController.unlikeComment);
 
+// Dislike a comment
+router.put('/comment/dislike/:postId/:commentId', auth, postController.dislikeComment);
+
+// Un-dislike a comment
+router.put('/comment/undislike/:postId/:commentId', auth, postController.undislikeComment);
 
 module.exports = router;
