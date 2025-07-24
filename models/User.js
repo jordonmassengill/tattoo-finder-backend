@@ -38,19 +38,17 @@ const userSchema = new mongoose.Schema({
   following: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
-});
-
-// Create additional schemas for different user types
-const enthusiastSchema = new mongoose.Schema({
+  }],
   savedPosts: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Post'
   }]
 });
 
+// Create additional schemas for different user types
+const enthusiastSchema = new mongoose.Schema({});
+
 const artistSchema = new mongoose.Schema({
-  // The redundant 'username' field has been removed from here.
   bio: String,
   location: String,
   priceRange: {

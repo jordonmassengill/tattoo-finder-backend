@@ -28,4 +28,9 @@ router.delete('/:id', auth, userController.deleteUser);
 //Profile Pic
 router.put('/profile-picture', auth, upload.single('profilePic'), userController.updateProfilePicture);
 
+//Save posts
+router.put('/save/:postId', auth, userController.savePost);
+router.put('/unsave/:postId', auth, userController.unsavePost);
+router.get('/me/saved', auth, userController.getSavedPosts);
+
 module.exports = router;

@@ -9,7 +9,8 @@ exports.getCurrentUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    // MODIFIED: Return a structured object consistent with the login response
+    
+    // This object contains ALL fields the frontend needs
     res.json({
       id: user._id,
       username: user.username,
@@ -18,13 +19,14 @@ exports.getCurrentUser = async (req, res) => {
       profilePic: user.profilePic,
       followers: user.followers,
       following: user.following,
+      savedPosts: user.savedPosts, // <-- Includes saved posts
       bio: user.bio,
       location: user.location,
       styles: user.styles,
       priceRange: user.priceRange
     });
   } catch (error) {
-    console.error(error);
+    console.error('Error in getCurrentUser:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -320,4 +322,67 @@ exports.deleteUser = async (req, res) => {
     console.error('Error deleting user:', error);
     res.status(500).json({ message: 'Server error' });
   }
+};
+
+// Add this new function to save a post
+exports.savePost = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    await User.findByIdAndUpdate(req.user.id, {
+      $addToSet: { savedPosts: req.params.postId }
+    });
+    
+    const updatedUser = await User.findById(req.user.id).select('savedPosts');
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error saving post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Add this new function to unsave a post
+exports.unsavePost = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    await User.findByIdAndUpdate(req.user.id, {
+      $pull: { savedPosts: req.params.postId }
+    });
+
+    const updatedUser = await User.findById(req.user.id).select('savedPosts');
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error unsaving post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Add this new function to get all saved posts
+exports.getSavedPosts = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .populate({
+        path: 'savedPosts',
+        populate: {
+          path: 'user',
+          select: 'username profilePic location priceRange' // <-- FIX: Added location and priceRange
+        }
+      });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json(user.savedPosts.reverse()); // Show most recently saved first
+  } catch (error) {
+    console.error('Error getting saved posts:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
