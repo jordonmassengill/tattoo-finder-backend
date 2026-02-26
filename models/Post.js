@@ -15,7 +15,13 @@ const postSchema = new mongoose.Schema({
     default: ''
   },
   tags: [String],
-  styles: [String],
+  // New structured categorization fields
+  colorType: { type: String, enum: ['Black/Grey', 'Color', ''], default: '' },
+  flashOrCustom: { type: String, enum: ['Flash', 'Custom', ''], default: '' },
+  size: { type: String, enum: ['Small', 'Medium', 'Large', ''], default: '' },
+  foundationalStyles: [String], // up to 2: Traditional, Neo-Traditional, Japanese/Irezumi, Realism, Tribal, Blackwork, New School
+  techniques: [String],         // up to 2: Dotwork, Linework, Watercolor, Geometric, Minimalist, Fine Line, Free Hand
+  subjects: [String],           // up to 2: Animal, Floral/Nature, Portrait, Pop Culture, Dark, Religious, Decorative, Lettering, Abstract, Sci-Fi
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
