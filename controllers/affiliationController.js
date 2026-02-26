@@ -1,4 +1,4 @@
-const { User } = require('../models/User');
+const { User, Artist, Shop } = require('../models/User');
 const AffiliationRequest = require('../models/AffiliationRequest');
 
 // POST /api/affiliations/request/:targetId
@@ -86,9 +86,11 @@ exports.acceptRequest = async (req, res) => {
       return res.status(400).json({ message: 'Artist is already affiliated with a shop' });
     }
 
-    // Create the affiliation on both sides atomically
-    await User.findByIdAndUpdate(artist._id, { shop: shop._id });
-    await User.findByIdAndUpdate(shop._id,   { $addToSet: { artists: artist._id } });
+    // Create the affiliation on both sides atomically.
+    // Must use the discriminator models (Artist/Shop) — the base User model's
+    // strict mode would silently strip fields that aren't in the base schema.
+    await Artist.findByIdAndUpdate(artist._id, { shop: shop._id });
+    await Shop.findByIdAndUpdate(shop._id,     { $addToSet: { artists: artist._id } });
 
     // Remove the pending request
     await AffiliationRequest.findByIdAndDelete(request._id);
@@ -146,8 +148,8 @@ exports.removeAffiliation = async (req, res) => {
       return res.status(400).json({ message: 'Not currently affiliated' });
     }
 
-    await User.findByIdAndUpdate(artist._id, { $unset: { shop: '' } });
-    await User.findByIdAndUpdate(shop._id,   { $pull: { artists: artist._id } });
+    await Artist.findByIdAndUpdate(artist._id, { $unset: { shop: '' } });
+    await Shop.findByIdAndUpdate(shop._id,     { $pull: { artists: artist._id } });
 
     res.json({ message: 'Affiliation removed' });
   } catch (error) {

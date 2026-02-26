@@ -291,15 +291,15 @@ exports.deleteUser = async (req, res) => {
     
     // If user is an artist and belongs to a shop, remove from shop's artists list
     if (user.userType === 'artist' && user.shop) {
-      await User.findByIdAndUpdate(user.shop, {
+      await Shop.findByIdAndUpdate(user.shop, {
         $pull: { artists: user._id }
       });
     }
-    
+
     // If user is a shop, handle its artists (maybe set their shop field to null)
     if (user.userType === 'shop' && user.artists && user.artists.length > 0) {
       // Update all artists to remove shop association
-      await User.updateMany(
+      await Artist.updateMany(
         { _id: { $in: user.artists } },
         { $unset: { shop: "" } }
       );
