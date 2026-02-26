@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 // Search for artists by criteria
 exports.searchArtists = async (req, res) => {
   try {
-    const { location, priceRange, styles, query, sort } = req.query;
+    const { location, priceRange, query, sort, inkSpecialty, designSpecialty, foundationalStyleSpecialties, techniqueSpecialties, subjectSpecialties } = req.query;
     const searchCriteria = { userType: 'artist' };
 
     if (query) {
@@ -21,10 +21,23 @@ exports.searchArtists = async (req, res) => {
     if (priceRange && priceRange.length > 0) {
       searchCriteria.priceRange = { $in: Array.isArray(priceRange) ? priceRange : [priceRange] };
     }
-    if (styles && styles.length > 0) {
-      const styleArray = styles.split(',').map(style => style.trim());
-      const styleRegexes = styleArray.map(style => new RegExp(style, 'i'));
-      searchCriteria.styles = { $in: styleRegexes };
+    if (inkSpecialty) {
+      searchCriteria.inkSpecialty = inkSpecialty;
+    }
+    if (designSpecialty) {
+      searchCriteria.designSpecialty = designSpecialty;
+    }
+    if (foundationalStyleSpecialties) {
+      const arr = foundationalStyleSpecialties.split(',').map(s => s.trim());
+      searchCriteria.foundationalStyleSpecialties = { $in: arr };
+    }
+    if (techniqueSpecialties) {
+      const arr = techniqueSpecialties.split(',').map(s => s.trim());
+      searchCriteria.techniqueSpecialties = { $in: arr };
+    }
+    if (subjectSpecialties) {
+      const arr = subjectSpecialties.split(',').map(s => s.trim());
+      searchCriteria.subjectSpecialties = { $in: arr };
     }
 
     const aggregation = [

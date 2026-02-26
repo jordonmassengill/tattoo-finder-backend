@@ -37,12 +37,19 @@ exports.register = async (req, res) => {
         return res.status(400).json({ message: 'Invalid price range' });
       }
       
-      user = new Artist({ 
+      user = new Artist({
         email, password, userType, username,
         bio: extraFields.bio,
         location: extraFields.location,
         priceRange: extraFields.priceRange || '',
-        styles: extraFields.styles || []
+        inkSpecialty: extraFields.inkSpecialty || '',
+        designSpecialty: extraFields.designSpecialty || '',
+        foundationalStyles: extraFields.foundationalStyles || [],
+        foundationalStyleSpecialties: extraFields.foundationalStyleSpecialties || [],
+        techniques: extraFields.techniques || [],
+        techniqueSpecialties: extraFields.techniqueSpecialties || [],
+        subjects: extraFields.subjects || [],
+        subjectSpecialties: extraFields.subjectSpecialties || [],
       });
     } else if (userType === 'shop') {
       user = new Shop({
@@ -76,9 +83,16 @@ exports.register = async (req, res) => {
           bio: user.bio,
           location: user.location
         }),
-        ...(userType === 'artist' && { 
-          styles: user.styles,
-          priceRange: user.priceRange
+        ...(userType === 'artist' && {
+          priceRange: user.priceRange,
+          inkSpecialty: user.inkSpecialty,
+          designSpecialty: user.designSpecialty,
+          foundationalStyles: user.foundationalStyles,
+          foundationalStyleSpecialties: user.foundationalStyleSpecialties,
+          techniques: user.techniques,
+          techniqueSpecialties: user.techniqueSpecialties,
+          subjects: user.subjects,
+          subjectSpecialties: user.subjectSpecialties,
         })
       }
     });
@@ -133,7 +147,17 @@ exports.login = async (req, res) => {
           bio: user.bio,
           location: user.location
         }),
-        ...(user.userType === 'artist' && { styles: user.styles })
+        ...(user.userType === 'artist' && {
+          priceRange: user.priceRange,
+          inkSpecialty: user.inkSpecialty,
+          designSpecialty: user.designSpecialty,
+          foundationalStyles: user.foundationalStyles,
+          foundationalStyleSpecialties: user.foundationalStyleSpecialties,
+          techniques: user.techniques,
+          techniqueSpecialties: user.techniqueSpecialties,
+          subjects: user.subjects,
+          subjectSpecialties: user.subjectSpecialties,
+        })
       }
     });
   } catch (error) {
