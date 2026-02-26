@@ -1,5 +1,6 @@
 const { User, Artist, Shop } = require('../models/User');
 const Post = require('../models/Post');
+const AffiliationRequest = require('../models/AffiliationRequest');
 const mongoose = require('mongoose');
 
 // Get current user
@@ -59,7 +60,14 @@ exports.getUserById = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
+    // Populate relational fields so the frontend has full objects to work with
+    if (user.userType === 'shop') {
+      await user.populate('artists', 'username profilePic userType');
+    } else if (user.userType === 'artist' && user.shop) {
+      await user.populate('shop', '_id username profilePic');
+    }
+
     res.json(user);
   } catch (error) {
     console.error('Error in getUserById:', error);
@@ -96,11 +104,19 @@ exports.getUserPosts = async (req, res) => {
     
     console.log(`Found user: ${user.username}, ID: ${user._id}`);
     
-    // Then get posts for that user
-    const posts = await Post.find({ user: user._id })
+    // Build the list of user IDs to fetch posts for
+    let userIds = [user._id];
+
+    // For shops: optionally include affiliated artists' posts
+    if (req.query.includeArtists === 'true' && user.userType === 'shop' && user.artists && user.artists.length > 0) {
+      userIds = [user._id, ...user.artists];
+    }
+
+    // Then get posts for those users
+    const posts = await Post.find({ user: { $in: userIds } })
       .sort({ createdAt: -1 })
       .populate('user', 'name userType profilePic username');
-    
+
     console.log(`Found ${posts.length} posts for user ${user.username}`);
       
     res.json(posts);
@@ -314,6 +330,11 @@ exports.deleteUser = async (req, res) => {
       { $pull: { following: user._id } }
     );
     
+    // Clean up any pending affiliation requests
+    await AffiliationRequest.deleteMany({
+      $or: [{ from: user._id }, { to: user._id }]
+    });
+
     // Finally delete the user
     await User.findByIdAndDelete(user._id);
     
