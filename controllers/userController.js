@@ -387,3 +387,16 @@ exports.getSavedPosts = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// Get users that the current user follows
+exports.getFollowing = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id)
+      .populate('following', 'username profilePic userType location priceRange bio inkSpecialty designSpecialty foundationalStyleSpecialties techniqueSpecialties subjectSpecialties followers');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user.following);
+  } catch (error) {
+    console.error('Error getting following:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};

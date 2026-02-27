@@ -32,5 +32,6 @@ router.put('/profile-picture', auth, upload.single('profilePic'), userController
 router.put('/save/:postId', auth, userController.savePost);
 router.put('/unsave/:postId', auth, userController.unsavePost);
 router.get('/me/saved', auth, userController.getSavedPosts);
+router.get('/me/following', auth, userController.getFollowing);
 
 module.exports = router;

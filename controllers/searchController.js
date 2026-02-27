@@ -43,6 +43,25 @@ exports.searchArtists = async (req, res) => {
     const aggregation = [
       { $match: searchCriteria },
       { $addFields: { followersCount: { $size: "$followers" } } },
+      {
+        $lookup: {
+          from: 'posts',
+          localField: '_id',
+          foreignField: 'user',
+          as: '_posts',
+        },
+      },
+      {
+        $addFields: {
+          totalLikes: {
+            $reduce: {
+              input: '$_posts',
+              initialValue: 0,
+              in: { $add: ['$$value', { $size: '$$this.likes' }] },
+            },
+          },
+        },
+      },
     ];
 
     if (sort === 'newest') {
@@ -53,7 +72,7 @@ exports.searchArtists = async (req, res) => {
 
     aggregation.push(
       { $limit: 30 },
-      { $project: { password: 0, __v: 0 } }
+      { $project: { password: 0, __v: 0, _posts: 0 } }
     );
 
     const artists = await User.aggregate(aggregation);
