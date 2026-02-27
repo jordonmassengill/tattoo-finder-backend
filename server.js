@@ -4,6 +4,7 @@ mongoose.set('debug', true);
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
+const multer = require('multer');
 
 // Load environment variables
 dotenv.config();
@@ -36,6 +37,18 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/posts', require('./routes/posts'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/affiliations', require('./routes/affiliations'));
+
+// Global error handler — must be after routes
+// Converts multer errors (and other thrown errors) into JSON responses
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ message: err.message });
+  }
+  if (err) {
+    return res.status(400).json({ message: err.message || 'An error occurred' });
+  }
+  next();
+});
 
 // Start server
 const PORT = process.env.PORT || 5000;
