@@ -4,18 +4,26 @@ const { User } = require('../models/User');
 // --- UNCHANGED FUNCTIONS ---
 exports.createPost = async (req, res) => {
   try {
-    const { caption, tags, styles } = req.body;
+    const { caption, tags, colorType, flashOrCustom, size, foundationalStyles, techniques, subjects } = req.body;
     if (!req.file) {
       return res.status(400).json({ message: 'No image file uploaded' });
     }
     const processedTags = tags ? tags.split(',').map(tag => tag.trim().toLowerCase()) : [];
-    const processedStyles = styles ? styles.split(',').map(style => style.trim()) : [];
+    const processedFoundationalStyles = foundationalStyles ? foundationalStyles.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const processedTechniques = techniques ? techniques.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const processedSubjects = subjects ? subjects.split(',').map(s => s.trim()).filter(Boolean) : [];
+
     const newPost = new Post({
       user: req.user.id,
       image: req.file.path,
       caption,
       tags: processedTags,
-      styles: processedStyles
+      colorType: colorType || '',
+      flashOrCustom: flashOrCustom || '',
+      size: size || '',
+      foundationalStyles: processedFoundationalStyles,
+      techniques: processedTechniques,
+      subjects: processedSubjects,
     });
     const post = await newPost.save();
     const populatedPost = await Post.findById(post._id).populate('user', 'name userType profilePic username');

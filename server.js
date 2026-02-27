@@ -35,6 +35,7 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/posts', require('./routes/posts'));
 app.use('/api/search', require('./routes/search'));
+app.use('/api/affiliations', require('./routes/affiliations'));
 
 // Start server
 const PORT = process.env.PORT || 5000;

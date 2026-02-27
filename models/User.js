@@ -1,97 +1,108 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 // Base User Schema
 const userSchema = new mongoose.Schema({
-  email: { 
-    type: String, 
-    required: true, 
-    unique: true 
-  },
-  password: { 
-    type: String, 
-    required: true 
-  },
-  username: {
-    type: String,
-    required: true,
-    unique: true,
-    match: [/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores']
-  },
-  profilePic: { 
-    type: String, 
-    default: '/default-profile.png' 
-  },
-  userType: { 
-    type: String, 
-    required: true,
-    enum: ['enthusiast', 'artist', 'shop']
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  followers: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  following: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  savedPosts: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Post'
-  }]
+  email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  password: {
+    type: String,
+    required: true
+  },
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+    match: [/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores']
+  },
+  profilePic: {
+    type: String,
+    default: '/default-profile.png'
+  },
+  userType: {
+    type: String,
+    required: true,
+    enum: ['enthusiast', 'artist', 'shop']
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  followers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  following: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  savedPosts: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Post'
+  }]
 });
 
 // Create additional schemas for different user types
 const enthusiastSchema = new mongoose.Schema({});
 
 const artistSchema = new mongoose.Schema({
-  bio: String,
-  location: String,
-  priceRange: {
-    type: String,
-    enum: ['$', '$$', '$$$', '$$$$', ''], // Added empty string to allow it to be optional
-    default: ''
-  },
-  styles: [String],
-  shop: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }
+  bio: String,
+  location: String,
+  priceRange: {
+    type: String,
+    enum: ['$', '$$', '$$$', '$$$$', ''],
+    default: ''
+  },
+  // Ink specialty: 'Black/Grey Specialty' | 'Color Specialty' | 'I Do Both Equally'
+  inkSpecialty: { type: String, enum: ['Black/Grey Specialty', 'Color Specialty', 'I Do Both Equally', ''], default: '' },
+  // Design specialty (required): 'Flash Specialty' | 'Custom Specialty' | 'I Do Both Equally'
+  designSpecialty: { type: String, enum: ['Flash Specialty', 'Custom Specialty', 'I Do Both Equally', ''], default: '' },
+  // Foundational styles: all items the artist works with; up to 2 can be marked as specialties
+  foundationalStyles: [String],
+  foundationalStyleSpecialties: [String],
+  // Techniques: all items the artist works with; up to 2 can be marked as specialties
+  techniques: [String],
+  techniqueSpecialties: [String],
+  // Subjects: all items the artist works with; up to 2 can be marked as specialties
+  subjects: [String],
+  subjectSpecialties: [String],
+  shop: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }
 });
 
 const shopSchema = new mongoose.Schema({
-  // The redundant 'username' field has been removed from here.
-  bio: String,
-  location: String,
-  phone: String,
-  website: String,
-  hours: String,
-  artists: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }]
+  bio: String,
+  location: String,
+  phone: String,
+  website: String,
+  hours: String,
+  artists: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+  if (!this.isModified('password')) return next();
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 // Method to compare passwords
 userSchema.methods.comparePassword = async function(password) {
-  return await bcrypt.compare(password, this.password);
+  return await bcrypt.compare(password, this.password);
 };
 
 // Create the models
