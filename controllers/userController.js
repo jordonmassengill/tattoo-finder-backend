@@ -2,6 +2,7 @@ const { User, Artist, Shop } = require('../models/User');
 const Post = require('../models/Post');
 const AffiliationRequest = require('../models/AffiliationRequest');
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 // Get current user
 exports.getCurrentUser = async (req, res) => {
@@ -400,7 +401,7 @@ exports.changePassword = async (req, res) => {
       return res.status(400).json({ message: 'New password must be at least 6 characters' });
     }
 
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.id).select('password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -410,8 +411,10 @@ exports.changePassword = async (req, res) => {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
 
-    user.password = newPassword;
-    await user.save();
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await User.findByIdAndUpdate(req.user.id, { password: hashedPassword });
 
     res.json({ message: 'Password updated successfully' });
   } catch (error) {

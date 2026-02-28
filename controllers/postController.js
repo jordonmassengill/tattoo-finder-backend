@@ -112,7 +112,7 @@ exports.addComment = async (req, res) => {
 };
 exports.updatePost = async (req, res) => {
   try {
-    const post = await Post.findById(req.params.id);
+    const post = await Post.findById(req.params.id).select('user');
     if (!post) {
       return res.status(404).json({ message: 'Post not found' });
     }
@@ -122,17 +122,22 @@ exports.updatePost = async (req, res) => {
 
     const { caption, tags, colorType, flashOrCustom, size, foundationalStyles, techniques, subjects } = req.body;
 
-    if (caption !== undefined) post.caption = caption;
-    if (colorType !== undefined) post.colorType = colorType;
-    if (flashOrCustom !== undefined) post.flashOrCustom = flashOrCustom;
-    if (size !== undefined) post.size = size;
-    if (tags !== undefined) post.tags = tags;
-    if (foundationalStyles !== undefined) post.foundationalStyles = foundationalStyles;
-    if (techniques !== undefined) post.techniques = techniques;
-    if (subjects !== undefined) post.subjects = subjects;
+    const updates = {};
+    if (caption !== undefined) updates.caption = caption;
+    if (colorType !== undefined) updates.colorType = colorType;
+    if (flashOrCustom !== undefined) updates.flashOrCustom = flashOrCustom;
+    if (size !== undefined) updates.size = size;
+    if (tags !== undefined) updates.tags = tags;
+    if (foundationalStyles !== undefined) updates.foundationalStyles = foundationalStyles;
+    if (techniques !== undefined) updates.techniques = techniques;
+    if (subjects !== undefined) updates.subjects = subjects;
 
-    await post.save();
-    const updatedPost = await Post.findById(post._id).populate('user', 'name userType profilePic username');
+    const updatedPost = await Post.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).populate('user', 'name userType profilePic username');
+
     res.json(updatedPost);
   } catch (error) {
     console.error('Error updating post:', error);
