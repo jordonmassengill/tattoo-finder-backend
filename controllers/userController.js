@@ -2,6 +2,7 @@ const { User, Artist, Shop } = require('../models/User');
 const Post = require('../models/Post');
 const AffiliationRequest = require('../models/AffiliationRequest');
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 // Get current user
 exports.getCurrentUser = async (req, res) => {
@@ -198,36 +199,35 @@ exports.updateProfile = async (req, res) => {
     } = req.body;
     const userId = req.user.id;
 
-    const user = await User.findById(userId);
-
+    const user = await User.findById(userId).select('userType');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (bio !== undefined) user.bio = bio;
-    if (location !== undefined) user.location = location;
+    const updates = {};
+    if (bio !== undefined) updates.bio = bio;
+    if (location !== undefined) updates.location = location;
+    if (req.file) updates.profilePic = req.file.path;
 
     if (user.userType === 'artist') {
       if (priceRange !== undefined && (priceRange === '' || ['$', '$$', '$$$', '$$$$'].includes(priceRange))) {
-        user.priceRange = priceRange;
+        updates.priceRange = priceRange;
       }
-      if (inkSpecialty !== undefined) user.inkSpecialty = inkSpecialty;
-      if (designSpecialty !== undefined) user.designSpecialty = designSpecialty;
-      if (foundationalStyles !== undefined) user.foundationalStyles = foundationalStyles;
-      if (foundationalStyleSpecialties !== undefined) user.foundationalStyleSpecialties = foundationalStyleSpecialties;
-      if (techniques !== undefined) user.techniques = techniques;
-      if (techniqueSpecialties !== undefined) user.techniqueSpecialties = techniqueSpecialties;
-      if (subjects !== undefined) user.subjects = subjects;
-      if (subjectSpecialties !== undefined) user.subjectSpecialties = subjectSpecialties;
+      if (inkSpecialty !== undefined) updates.inkSpecialty = inkSpecialty;
+      if (designSpecialty !== undefined) updates.designSpecialty = designSpecialty;
+      if (foundationalStyles !== undefined) updates.foundationalStyles = foundationalStyles;
+      if (foundationalStyleSpecialties !== undefined) updates.foundationalStyleSpecialties = foundationalStyleSpecialties;
+      if (techniques !== undefined) updates.techniques = techniques;
+      if (techniqueSpecialties !== undefined) updates.techniqueSpecialties = techniqueSpecialties;
+      if (subjects !== undefined) updates.subjects = subjects;
+      if (subjectSpecialties !== undefined) updates.subjectSpecialties = subjectSpecialties;
     }
 
-    if (req.file) {
-      user.profilePic = req.file.path;
-    }
-
-    await user.save();
-
-    const updatedUser = await User.findById(userId).select('-password');
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updates },
+      { new: true, strict: false }
+    ).select('-password');
 
     res.json(updatedUser);
   } catch (error) {
@@ -384,6 +384,40 @@ exports.getSavedPosts = async (req, res) => {
     res.json(user.savedPosts.reverse());
   } catch (error) {
     console.error('Error getting saved posts:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Change password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Please provide current and new password' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.user.id).select('password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await User.findByIdAndUpdate(req.user.id, { password: hashedPassword });
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Error changing password:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

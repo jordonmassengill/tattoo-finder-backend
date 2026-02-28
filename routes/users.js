@@ -22,6 +22,9 @@ router.put('/unfollow/:id', auth, userController.unfollowUser);
 // Update user profile
 router.put('/update', auth, userController.updateProfile);
 
+// Change password
+router.put('/change-password', auth, userController.changePassword);
+
 // Delete user account
 router.delete('/:id', auth, userController.deleteUser);
 
