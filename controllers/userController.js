@@ -199,36 +199,35 @@ exports.updateProfile = async (req, res) => {
     } = req.body;
     const userId = req.user.id;
 
-    const user = await User.findById(userId);
-
+    const user = await User.findById(userId).select('userType');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (bio !== undefined) user.bio = bio;
-    if (location !== undefined) user.location = location;
+    const updates = {};
+    if (bio !== undefined) updates.bio = bio;
+    if (location !== undefined) updates.location = location;
+    if (req.file) updates.profilePic = req.file.path;
 
     if (user.userType === 'artist') {
       if (priceRange !== undefined && (priceRange === '' || ['$', '$$', '$$$', '$$$$'].includes(priceRange))) {
-        user.priceRange = priceRange;
+        updates.priceRange = priceRange;
       }
-      if (inkSpecialty !== undefined) user.inkSpecialty = inkSpecialty;
-      if (designSpecialty !== undefined) user.designSpecialty = designSpecialty;
-      if (foundationalStyles !== undefined) user.foundationalStyles = foundationalStyles;
-      if (foundationalStyleSpecialties !== undefined) user.foundationalStyleSpecialties = foundationalStyleSpecialties;
-      if (techniques !== undefined) user.techniques = techniques;
-      if (techniqueSpecialties !== undefined) user.techniqueSpecialties = techniqueSpecialties;
-      if (subjects !== undefined) user.subjects = subjects;
-      if (subjectSpecialties !== undefined) user.subjectSpecialties = subjectSpecialties;
+      if (inkSpecialty !== undefined) updates.inkSpecialty = inkSpecialty;
+      if (designSpecialty !== undefined) updates.designSpecialty = designSpecialty;
+      if (foundationalStyles !== undefined) updates.foundationalStyles = foundationalStyles;
+      if (foundationalStyleSpecialties !== undefined) updates.foundationalStyleSpecialties = foundationalStyleSpecialties;
+      if (techniques !== undefined) updates.techniques = techniques;
+      if (techniqueSpecialties !== undefined) updates.techniqueSpecialties = techniqueSpecialties;
+      if (subjects !== undefined) updates.subjects = subjects;
+      if (subjectSpecialties !== undefined) updates.subjectSpecialties = subjectSpecialties;
     }
 
-    if (req.file) {
-      user.profilePic = req.file.path;
-    }
-
-    await user.save();
-
-    const updatedUser = await User.findById(userId).select('-password');
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $set: updates },
+      { new: true }
+    ).select('-password');
 
     res.json(updatedUser);
   } catch (error) {
