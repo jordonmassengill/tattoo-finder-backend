@@ -110,6 +110,35 @@ exports.addComment = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+exports.updatePost = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+    if (post.user.toString() !== req.user.id) {
+      return res.status(401).json({ message: 'Not authorized to edit this post' });
+    }
+
+    const { caption, tags, colorType, flashOrCustom, size, foundationalStyles, techniques, subjects } = req.body;
+
+    if (caption !== undefined) post.caption = caption;
+    if (colorType !== undefined) post.colorType = colorType;
+    if (flashOrCustom !== undefined) post.flashOrCustom = flashOrCustom;
+    if (size !== undefined) post.size = size;
+    if (tags !== undefined) post.tags = tags;
+    if (foundationalStyles !== undefined) post.foundationalStyles = foundationalStyles;
+    if (techniques !== undefined) post.techniques = techniques;
+    if (subjects !== undefined) post.subjects = subjects;
+
+    await post.save();
+    const updatedPost = await Post.findById(post._id).populate('user', 'name userType profilePic username');
+    res.json(updatedPost);
+  } catch (error) {
+    console.error('Error updating post:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 exports.deletePost = async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);

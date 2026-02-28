@@ -22,6 +22,9 @@ router.put('/unlike/:id', auth, postController.unlikePost);
 // Add a comment to a post
 router.post('/comment/:id', auth, postController.addComment);
 
+// Update a post
+router.put('/:id', auth, postController.updatePost);
+
 // Delete a post
 router.delete('/:id', auth, postController.deletePost);
 
