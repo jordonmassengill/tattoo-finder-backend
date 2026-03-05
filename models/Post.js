@@ -15,13 +15,12 @@ const postSchema = new mongoose.Schema({
     default: ''
   },
   tags: [String],
-  // New structured categorization fields
+  // Structured categorization fields
   colorType: { type: String, enum: ['Black/Grey', 'Color', ''], default: '' },
-  flashOrCustom: { type: String, enum: ['Flash', 'Custom', ''], default: '' },
+  flashOrCustom: { type: String, enum: ['Flash Sheet', 'Tattoo Work', ''], default: '' },
   size: { type: String, enum: ['Small', 'Medium', 'Large', ''], default: '' },
-  foundationalStyles: [String], // up to 2: Traditional, Neo-Traditional, Japanese/Irezumi, Realism, Tribal, Blackwork, New School, Chicano, Trash Polka
-  techniques: [String],         // up to 2: Dotwork, Linework, Watercolor, Geometric, Minimalist, Fine Line, Free Hand, Illustrative, Sketch
-  subjects: [String],           // up to 2: Animal, Floral/Nature, Portrait, Pop Culture, Dark, Spiritual, Decorative, Lettering, Abstract, Sci-Fi, Psychedelic
+  styles: [String],    // up to 2: Traditional, New School, Lettering, Realism, Illustrative, Tribal, Geometric, Neo-Traditional, Japanese, Blackwork, Minimalist, Fine Line, Micro-Realism, Watercolor, Chicano, Sketch, Trash Polka
+  subjects: [String],  // up to 2: Animal, Floral, Traditional Imagery, Portrait, Lettering, Pop Culture, Anime, Nature, Dark, Fantasy, Spiritual, Decorative, Sci-fi, Abstract, Psychedelic, Nautical
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'

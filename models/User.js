@@ -60,12 +60,9 @@ const artistSchema = new mongoose.Schema({
   inkSpecialty: { type: String, enum: ['Black/Grey Specialty', 'Color Specialty', 'I Do Both Equally', ''], default: '' },
   // Design specialty (required): 'Flash Specialty' | 'Custom Specialty' | 'I Do Both Equally'
   designSpecialty: { type: String, enum: ['Flash Specialty', 'Custom Specialty', 'I Do Both Equally', ''], default: '' },
-  // Foundational styles: all items the artist works with; up to 2 can be marked as specialties
-  foundationalStyles: [String],
-  foundationalStyleSpecialties: [String],
-  // Techniques: all items the artist works with; up to 2 can be marked as specialties
-  techniques: [String],
-  techniqueSpecialties: [String],
+  // Styles: all items the artist works with; up to 2 can be marked as specialties
+  styles: [String],
+  styleSpecialties: [String],
   // Subjects: all items the artist works with; up to 2 can be marked as specialties
   subjects: [String],
   subjectSpecialties: [String],

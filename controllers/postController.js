@@ -4,13 +4,12 @@ const { User } = require('../models/User');
 // --- UNCHANGED FUNCTIONS ---
 exports.createPost = async (req, res) => {
   try {
-    const { caption, tags, colorType, flashOrCustom, size, foundationalStyles, techniques, subjects } = req.body;
+    const { caption, tags, colorType, flashOrCustom, size, styles, subjects } = req.body;
     if (!req.file) {
       return res.status(400).json({ message: 'No image file uploaded' });
     }
     const processedTags = tags ? tags.split(',').map(tag => tag.trim().toLowerCase()) : [];
-    const processedFoundationalStyles = foundationalStyles ? foundationalStyles.split(',').map(s => s.trim()).filter(Boolean) : [];
-    const processedTechniques = techniques ? techniques.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const processedStyles = styles ? styles.split(',').map(s => s.trim()).filter(Boolean) : [];
     const processedSubjects = subjects ? subjects.split(',').map(s => s.trim()).filter(Boolean) : [];
 
     const newPost = new Post({
@@ -21,8 +20,7 @@ exports.createPost = async (req, res) => {
       colorType: colorType || '',
       flashOrCustom: flashOrCustom || '',
       size: size || '',
-      foundationalStyles: processedFoundationalStyles,
-      techniques: processedTechniques,
+      styles: processedStyles,
       subjects: processedSubjects,
     });
     const post = await newPost.save();
@@ -120,7 +118,7 @@ exports.updatePost = async (req, res) => {
       return res.status(401).json({ message: 'Not authorized to edit this post' });
     }
 
-    const { caption, tags, colorType, flashOrCustom, size, foundationalStyles, techniques, subjects } = req.body;
+    const { caption, tags, colorType, flashOrCustom, size, styles, subjects } = req.body;
 
     const updates = {};
     if (caption !== undefined) updates.caption = caption;
@@ -128,8 +126,7 @@ exports.updatePost = async (req, res) => {
     if (flashOrCustom !== undefined) updates.flashOrCustom = flashOrCustom;
     if (size !== undefined) updates.size = size;
     if (tags !== undefined) updates.tags = tags;
-    if (foundationalStyles !== undefined) updates.foundationalStyles = foundationalStyles;
-    if (techniques !== undefined) updates.techniques = techniques;
+    if (styles !== undefined) updates.styles = styles;
     if (subjects !== undefined) updates.subjects = subjects;
 
     const updatedPost = await Post.findByIdAndUpdate(
