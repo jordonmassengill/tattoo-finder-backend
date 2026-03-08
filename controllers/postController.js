@@ -37,9 +37,14 @@ exports.getPosts = async (req, res) => {
     if (!currentUser) {
       return res.status(404).json({ message: 'User not found' });
     }
+    const page = parseInt(req.query.page) || 1;
+    const limit = 30;
+    const skip = (page - 1) * limit;
     const usersForFeed = [...currentUser.following, req.user.id];
     const posts = await Post.find({ user: { $in: usersForFeed } })
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
       .populate('user', 'name userType profilePic username');
     res.json(posts);
   } catch (error) {

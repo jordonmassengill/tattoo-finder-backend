@@ -5,7 +5,10 @@ const mongoose = require('mongoose');
 // Search for artists by criteria
 exports.searchArtists = async (req, res) => {
   try {
-    const { location, priceRange, query, sort, inkSpecialty, designSpecialty, styleSpecialties, subjectSpecialties } = req.query;
+    const { location, priceRange, query, sort, inkSpecialty, designSpecialty, foundationalStyleSpecialties, techniqueSpecialties, subjectSpecialties, page } = req.query;
+    const pageNum = parseInt(page) || 1;
+    const limit = 30;
+    const skip = (pageNum - 1) * limit;
     const searchCriteria = { userType: 'artist' };
 
     if (query) {
@@ -27,9 +30,13 @@ exports.searchArtists = async (req, res) => {
     if (designSpecialty) {
       searchCriteria.designSpecialty = designSpecialty;
     }
-    if (styleSpecialties) {
-      const arr = styleSpecialties.split(',').map(s => s.trim());
-      searchCriteria.styleSpecialties = { $in: arr };
+    if (foundationalStyleSpecialties) {
+      const arr = foundationalStyleSpecialties.split(',').map(s => s.trim());
+      searchCriteria.foundationalStyleSpecialties = { $in: arr };
+    }
+    if (techniqueSpecialties) {
+      const arr = techniqueSpecialties.split(',').map(s => s.trim());
+      searchCriteria.techniqueSpecialties = { $in: arr };
     }
     if (subjectSpecialties) {
       const arr = subjectSpecialties.split(',').map(s => s.trim());
@@ -67,7 +74,8 @@ exports.searchArtists = async (req, res) => {
     }
 
     aggregation.push(
-      { $limit: 30 },
+      { $skip: skip },
+      { $limit: limit },
       { $project: { password: 0, __v: 0, _posts: 0 } }
     );
 
@@ -83,7 +91,10 @@ exports.searchArtists = async (req, res) => {
 // Primary search endpoint for posts.
 exports.searchPosts = async (req, res) => {
   try {
-    const { location, priceRange, sort, query, colorType, flashOrCustom, size, styles, subjects } = req.query;
+    const { location, priceRange, sort, query, colorType, flashOrCustom, size, foundationalStyles, techniques, subjects, page } = req.query;
+    const pageNum = parseInt(page) || 1;
+    const limit = 30;
+    const skip = (pageNum - 1) * limit;
     const finalFilter = {};
     const postConditions = [];
 
@@ -116,9 +127,13 @@ exports.searchPosts = async (req, res) => {
     if (size) {
       postConditions.push({ size });
     }
-    if (styles && styles.length > 0) {
-      const arr = styles.split(',').map(s => s.trim());
-      postConditions.push({ styles: { $in: arr } });
+    if (foundationalStyles && foundationalStyles.length > 0) {
+      const arr = foundationalStyles.split(',').map(s => s.trim());
+      postConditions.push({ foundationalStyles: { $in: arr } });
+    }
+    if (techniques && techniques.length > 0) {
+      const arr = techniques.split(',').map(s => s.trim());
+      postConditions.push({ techniques: { $in: arr } });
     }
     if (subjects && subjects.length > 0) {
       const arr = subjects.split(',').map(s => s.trim());
@@ -160,7 +175,8 @@ exports.searchPosts = async (req, res) => {
     }
 
     aggregation.push(
-      { $limit: 50 },
+      { $skip: skip },
+      { $limit: limit },
       {
         $lookup: {
           from: "users",
