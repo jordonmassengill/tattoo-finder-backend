@@ -5,7 +5,10 @@ const mongoose = require('mongoose');
 // Search for artists by criteria
 exports.searchArtists = async (req, res) => {
   try {
-    const { location, priceRange, query, sort, inkSpecialty, designSpecialty, foundationalStyleSpecialties, techniqueSpecialties, subjectSpecialties } = req.query;
+    const { location, priceRange, query, sort, inkSpecialty, designSpecialty, foundationalStyleSpecialties, techniqueSpecialties, subjectSpecialties, page } = req.query;
+    const pageNum = parseInt(page) || 1;
+    const limit = 30;
+    const skip = (pageNum - 1) * limit;
     const searchCriteria = { userType: 'artist' };
 
     if (query) {
@@ -71,7 +74,8 @@ exports.searchArtists = async (req, res) => {
     }
 
     aggregation.push(
-      { $limit: 30 },
+      { $skip: skip },
+      { $limit: limit },
       { $project: { password: 0, __v: 0, _posts: 0 } }
     );
 
@@ -87,7 +91,10 @@ exports.searchArtists = async (req, res) => {
 // Primary search endpoint for posts.
 exports.searchPosts = async (req, res) => {
   try {
-    const { location, priceRange, sort, query, colorType, flashOrCustom, size, foundationalStyles, techniques, subjects } = req.query;
+    const { location, priceRange, sort, query, colorType, flashOrCustom, size, foundationalStyles, techniques, subjects, page } = req.query;
+    const pageNum = parseInt(page) || 1;
+    const limit = 30;
+    const skip = (pageNum - 1) * limit;
     const finalFilter = {};
     const postConditions = [];
 
@@ -168,7 +175,8 @@ exports.searchPosts = async (req, res) => {
     }
 
     aggregation.push(
-      { $limit: 50 },
+      { $skip: skip },
+      { $limit: limit },
       {
         $lookup: {
           from: "users",

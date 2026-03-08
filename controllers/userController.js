@@ -108,8 +108,14 @@ exports.getUserPosts = async (req, res) => {
       userIds = [user._id, ...user.artists];
     }
 
+    const page = parseInt(req.query.page) || 1;
+    const limit = 30;
+    const skip = (page - 1) * limit;
+
     const posts = await Post.find({ user: { $in: userIds } })
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
       .populate('user', 'name userType profilePic username');
 
     console.log(`Found ${posts.length} posts for user ${user.username}`);
