@@ -1,12 +1,35 @@
 const crypto = require('crypto');
 const { User, Enthusiast, Artist, Shop } = require('../models/User');
+const InviteCode = require('../models/InviteCode');
 const jwt = require('jsonwebtoken');
 const { sendVerificationEmail } = require('../services/emailService');
 
 // Register user
 exports.register = async (req, res) => {
   try {
-    const { email, username, password, userType, ...extraFields } = req.body;
+    const { email, username, password, userType, inviteCode, ...extraFields } = req.body;
+
+    // Artist and shop registrations require a valid invite code
+    if (userType === 'artist' || userType === 'shop') {
+      if (!inviteCode) {
+        return res.status(400).json({ message: 'An invite code is required to create an artist or shop account' });
+      }
+
+      const invite = await InviteCode.findOne({ code: inviteCode });
+
+      if (!invite) {
+        return res.status(400).json({ message: 'Invalid invite code' });
+      }
+      if (invite.used) {
+        return res.status(400).json({ message: 'This invite code has already been used' });
+      }
+      if (invite.expiresAt && invite.expiresAt < new Date()) {
+        return res.status(400).json({ message: 'This invite code has expired' });
+      }
+      if (invite.userType !== userType) {
+        return res.status(400).json({ message: `This invite code is for a ${invite.userType} account, not ${userType}` });
+      }
+    }
 
     // Check if email or username already exists
     const existingEmail = await User.findOne({ email });
@@ -70,6 +93,14 @@ exports.register = async (req, res) => {
     }
 
     await user.save();
+
+    // Mark invite code as used for artist/shop registrations
+    if ((userType === 'artist' || userType === 'shop') && inviteCode) {
+      await InviteCode.findOneAndUpdate(
+        { code: inviteCode },
+        { used: true, usedBy: user._id }
+      );
+    }
 
     // Send verification email (non-blocking — if it fails we still respond)
     try {
