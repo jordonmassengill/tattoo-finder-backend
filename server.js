@@ -43,6 +43,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/posts', require('./routes/posts'));
 app.use('/api/search', require('./routes/search'));
 app.use('/api/affiliations', require('./routes/affiliations'));
+app.use('/api/invite-codes', require('./routes/inviteCodes'));
 
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
