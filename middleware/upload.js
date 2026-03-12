@@ -1,24 +1,26 @@
 const multer = require('multer');
-const path = require('path');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
 
-// Storage configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
-  }
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// File filter
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'inkspace',
+    allowed_formats: ['jpeg', 'jpg', 'png', 'gif'],
+    resource_type: 'image',
+  },
+});
+
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
-  
-  if (extname && mimetype) {
-    return cb(null, true);
+  if (allowedTypes.test(file.mimetype)) {
+    cb(null, true);
   } else {
     cb(new Error('Only image files are allowed'));
   }
@@ -26,6 +28,6 @@ const fileFilter = (req, file, cb) => {
 
 module.exports = multer({
   storage,
-  limits: { fileSize: 10000000 }, // 10MB limit
-  fileFilter
+  limits: { fileSize: 10000000 },
+  fileFilter,
 });
